@@ -478,7 +478,7 @@ func (options *Html) Emphasis(out *bytes.Buffer, text []byte) {
 func (options *Html) maybeWriteAbsolutePrefix(out *bytes.Buffer, link []byte) {
 	if options.parameters.AbsolutePrefix != "" && isRelativeLink(link) {
 		out.WriteString(options.parameters.AbsolutePrefix)
-		if link[0] != '/' {
+		if link[0] != '/' && options.parameters.AbsolutePrefix[len(options.parameters.AbsolutePrefix)-1] != '/' {
 			out.WriteByte('/')
 		}
 	}
@@ -856,24 +856,31 @@ func doubleSpace(out *bytes.Buffer) {
 	}
 }
 
-func isRelativeLink(link []byte) (yes bool) {
-	yes = false
-
+func isRelativeLink(link []byte) bool {
 	// a tag begin with '#'
 	if link[0] == '#' {
-		yes = true
+		return true
 	}
 
 	// link begin with '/' but not '//', the second maybe a protocol relative link
 	if len(link) >= 2 && link[0] == '/' && link[1] != '/' {
-		yes = true
+		return true
 	}
 
 	// only the root '/'
 	if len(link) == 1 && link[0] == '/' {
-		yes = true
+		return true
 	}
-	return
+
+	if bytes.Index(link, []byte{':'}) >= 0 {
+		return false
+	}
+
+	if bs := bytes.Split(link, []byte{'/'}); bytes.Index(bs[0], []byte{'.'}) < 0 {
+		return true
+	}
+
+	return false
 }
 
 func (options *Html) ensureUniqueHeaderID(id string) string {
